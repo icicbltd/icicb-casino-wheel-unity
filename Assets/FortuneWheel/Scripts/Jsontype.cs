@@ -15,7 +15,7 @@ public class ReceiveJsonObject
     public bool gameResult;
     public float earnAmount;
     public int randomNumber;
-    public string errorMessage;
+    public string message;
     public ReceiveJsonObject()
     {
     }

@@ -1,12 +1,11 @@
-using UnityEngine;
-using UnityEngine.UI;
-using System.Collections;
-using System.Collections.Generic;
-using TMPro;
-using UnitySocketIO;
-using UnitySocketIO.Events;
-using System.Runtime.InteropServices;
 using SimpleJSON;
+using System;
+using System.Collections;
+using System.Runtime.InteropServices;
+using TMPro;
+using UnityEngine;
+using UnityEngine.Networking;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
@@ -19,19 +18,22 @@ public class UIManager : MonoBehaviour
 
 
 	private float[] _sectorsAngles;
-    private float _finalAngle;
+	public static Globalinitial _global;
+	public static APIForm apiform;
+	private float _finalAngle;
     private float _startAngle = 0;
     private float _currentLerpRotationTime;
 	private int randomFinalAngle;
+	private float PreviousCoinsAmount;
 
 	public GameObject IncreaseButton;
 	public GameObject ReduceButton;
 	public GameObject Circle; 
-	public Button TurnButton;			// Rotatable Object with rewards
+	public Button TurnButton;
+	private string Token = "";
+	// Rotatable Object with rewards
 
 	BetPlayer _player;
-
-	public SocketIOController io;
 
     public float totalAmount;		// For wasted coins animation
 	public float TurnCost;
@@ -42,37 +44,23 @@ public class UIManager : MonoBehaviour
     private static extern void GameReady(string msg);	
 	void Start ()
 	{
-		InputCoinValue.text = "10";
-		TurnCost = float.Parse(InputCoinValue.text);
-		_sectorsAngles = new float[] { 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360 };
-
-		io.Connect();
-		io.On("connect" , (e) =>
-		{
-			Debug.Log("Game started");
-			io.On("bet result", (res) =>
-			{
-				StartCoroutine(BetResult(res));
-			});
-			io.On("error massage", (res) =>
-			 {
-				 BetError(res);
-			 });
-		});
+		PreviousCoinsAmount = totalAmount;
 
 		#if UNITY_WEBGL == true && UNITY_EDITOR == false
             GameReady("Ready");
-        #endif
+#endif
 	}
 
 
 	void Update ()
 	{
-		// Make turn button non interactable if user has not enough money for the turn
-		if (_isStarted) {
+		if (_isStarted)
+		{
 			TurnButton.interactable = false;
 			TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 0.5f);
-		} else {
+		}
+		else
+		{
 			TurnButton.interactable = true;
 			TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 1);
 		}
@@ -81,31 +69,33 @@ public class UIManager : MonoBehaviour
 			return;
 
 		float maxLerpRotationTime = 10f;
-	
+
 		// increment timer once per frame
 		_currentLerpRotationTime += Time.deltaTime;
-		if (_currentLerpRotationTime > maxLerpRotationTime || Circle.transform.eulerAngles.z == _finalAngle) {
+		if (_currentLerpRotationTime > maxLerpRotationTime || Circle.transform.eulerAngles.z == _finalAngle)
+		{
 			_currentLerpRotationTime = maxLerpRotationTime;
 			_isStarted = false;
 			_startAngle = _finalAngle % 360;
 
 		}
-	
+
 		// Calculate current position using linear interpolation
 		float t = _currentLerpRotationTime / maxLerpRotationTime;
-	
+
 		// This formulae allows to speed up at start and speed down at the end of rotation.
 		// Try to change this values to customize the speed
 		t = t * t * t * (t * (6f * t - 15f) + 10f);
-	
-		float angle = Mathf.Lerp (_startAngle, _finalAngle, t);
-		Circle.transform.eulerAngles = new Vector3 (0, 0, angle);
+
+		float angle = Mathf.Lerp(_startAngle, _finalAngle, t);
+		Circle.transform.eulerAngles = new Vector3(0, 0, angle);
 	}
 
 	public void RequestToken(string data)
     {
         JSONNode usersInfo = JSON.Parse(data);
-        Debug.Log("token=--------" + usersInfo["token"]);
+		Token = usersInfo["token"];
+		Debug.Log("token=--------" + usersInfo["token"]);
         Debug.Log("amount=------------" + usersInfo["amount"]);
         Debug.Log("userName=------------" + usersInfo["userName"]);
         _player.token = usersInfo["token"];
@@ -118,105 +108,141 @@ public class UIManager : MonoBehaviour
 
 	public void InputCoinValue_Changed()
     {
-
-		if (TurnCost <= 10.0)
+		if (_isStarted == false)
 		{
-            InputCoinValue.text = "10";
+
+			if (TurnCost <= 10.0)
+			{
+				InputCoinValue.text = "10";
+			}
+			else if (TurnCost >= 200.0)
+			{
+				InputCoinValue.text = "200";
+			}
 		}
-        else if (TurnCost >= 100.0)
-        {
-            InputCoinValue.text = "100";
-        }
     }
 
 
 	public void Reducebtn_Clicked()
 	{
-
-			if(TurnCost > 10.0)
+		if (_isStarted == false)
 		{
-		TurnCost -= (float)10.0;
-		InputCoinValue.text = (TurnCost).ToString();
-			Errortext.text = "";
+			if (TurnCost > 10.0)
+			{
+				TurnCost -= (float)10.0;
+				InputCoinValue.text = (TurnCost).ToString();
+				Errortext.text = "";
+			}
 		}
 
 	}
 
-
 	public void Increasebtn_Clicked()
 	{
-
-		if(TurnCost < 200.0)
+		if (_isStarted == false)
 		{
-		TurnCost += (float)10.0;
-			InputCoinValue.text = (TurnCost).ToString();
-			Errortext.text = "";
+			if (TurnCost < 200.0)
+			{ 
+					TurnCost += (float)10.0;
+					InputCoinValue.text = (TurnCost).ToString();
+					Errortext.text = "";
+			}	
 		}
-
 	}
 
 
 	public void SpinBtn_Clicked()
 	{
+		totalAmount = Single.Parse(walletAmount_Text.text);
+		TurnCost = float.Parse(InputCoinValue.text);
 		if (totalAmount >= TurnCost)
 		{
-			Jsontype JObject = new Jsontype();
-			JObject.betAmount = TurnCost;
-            JObject.token = _player.token;
-            JObject.userName = _player.username;
-            io.Emit("bet info", JsonUtility.ToJson(JObject));
+
+			StartCoroutine(Server());
 		}
 		else
         {
-			Errortext.text = "TotalAmount is small!";
+			TurnCost = totalAmount;
+			InputCoinValue.text = (TurnCost).ToString();
         }
 
 	}
-	IEnumerator BetResult(SocketIOEvent socketIOEvent)
+	private IEnumerator Server()
     {
-		_isStarted = true;
-		totalAmount -= TurnCost;
-		walletAmount_Text.text = (totalAmount).ToString();
-		var res = ReceiveJsonObject.CreateFromJSON(socketIOEvent.data);
-		// Show wasted coins
-		CoinsDeltaText.text = "-" + TurnCost;
-		CoinsDeltaText.gameObject.SetActive (true);
-
-		randomFinalAngle = res.randomNumber;
-
-		int fullCircles = 10;
-		_finalAngle = -(fullCircles * 360 + randomFinalAngle);
-
-
-		_currentLerpRotationTime = 0f;    	
-        yield return new WaitForSeconds(10f);
-        _isStarted = false;
-		totalAmount += res.earnAmount;
-		EarnAmount = res.earnAmount;
-
-		if(res.gameResult)
-		{
-		CoinsDeltaText.text = "+"+(EarnAmount).ToString();
-		walletAmount_Text.text = (totalAmount).ToString();
+		WWWForm form = new WWWForm();
+		form.AddField("token", Token);
+		form.AddField("betAmount", (TurnCost).ToString());
+		_global = new Globalinitial();
+		UnityWebRequest www = UnityWebRequest.Post(_global.BaseUrl + "api/start-Wheel", form);
+		yield return www.SendWebRequest();
+		if (www.result!= UnityWebRequest.Result.Success)
+        {
+			Errortext.text = "Server error!";
+			yield return new WaitForSeconds(2);
+			Errortext.text = "";
 
 		}
-		else 
-		{
-		CoinsDeltaText.text = "LOSE";
-		walletAmount_Text.text = (totalAmount).ToString();
+		else
+        {
+			string strData = System.Text.Encoding.UTF8.GetString(www.downloadHandler.data);
+			Debug.Log(strData);
+			apiform = JsonUtility.FromJson<APIForm>(strData);
+            if (apiform.Message == "1")
+            {
+				Errortext.text = "Bet error!";
+				yield return new WaitForSeconds(2);
+				Errortext.text = "";
+			}else if(apiform.Message == "2")
+            {
+				Errortext.text = "Response Error";
+				yield return new WaitForSeconds(2);
+				Errortext.text = "";
+            }
+            else
+            {
+				_isStarted = true;
+				walletAmount_Text.text = (totalAmount-TurnCost).ToString();
+				totalAmount = float.Parse(walletAmount_Text.text);
+				CoinsDeltaText.text = "-" + (TurnCost).ToString();
+				StartCoroutine(HideCoinsDelta());
+				StartCoroutine(UpdateCoinsAmount());
 
-
+				int fullCircles = 20;
+				_finalAngle = -(fullCircles * 360 + 30*apiform.Angle);
+				_currentLerpRotationTime = 0f;
+				yield return new WaitForSeconds(10f);
+				_isStarted = false;
+				CoinsDeltaText.text = "+" + (apiform.WinMoney).ToString();
+				CoinsDeltaText.gameObject.SetActive(true);
+				walletAmount_Text.text = (Single.Parse(walletAmount_Text.text)+apiform.WinMoney).ToString();
+				totalAmount = float.Parse(walletAmount_Text.text);
+				StartCoroutine(UpdateCoinsAmount());
+            }
 		}
-
-        Debug.Log(res.gameResult + "  " + res.randomNumber);
-    }
-	void BetError(SocketIOEvent socketIOEvent)
-    {
-		var res = ReceiveJsonObject.CreateFromJSON(socketIOEvent.data);
-		totalAmount += TurnCost;
-		walletAmount_Text.text = (totalAmount).ToString();
-		Errortext.text = res.errorMessage;
 	}
+	private IEnumerator UpdateCoinsAmount()
+	{
+		// Animation for increasing and decreasing of coins amount
+		const float seconds = 0.5f;
+		float elapsedTime = 0;
+
+		while (elapsedTime < seconds)
+		{
+			walletAmount_Text.text = Mathf.Floor(Mathf.Lerp(PreviousCoinsAmount, totalAmount, (elapsedTime / seconds))).ToString();
+			elapsedTime += Time.deltaTime;
+
+			yield return new WaitForEndOfFrame();
+		}
+
+		PreviousCoinsAmount = totalAmount;
+		walletAmount_Text.text = totalAmount.ToString();
+	}
+	private IEnumerator HideCoinsDelta()
+	{
+		yield return new WaitForSeconds(5f);
+		CoinsDeltaText.gameObject.SetActive(false);
+	}
+
 }
 public class BetPlayer
 {
