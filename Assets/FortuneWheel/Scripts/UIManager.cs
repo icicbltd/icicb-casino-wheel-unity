@@ -146,7 +146,12 @@ public class UIManager : MonoBehaviour
 					TurnCost += (float)10.0;
 					InputCoinValue.text = (TurnCost).ToString();
 					Errortext.text = "";
-			}	
+			}
+			if( TurnCost == 200 && totalAmount <= TurnCost)
+            {
+				TurnCost = totalAmount;
+				InputCoinValue.text = (TurnCost).ToString();
+            }
 		}
 	}
 
@@ -160,11 +165,12 @@ public class UIManager : MonoBehaviour
 
 			StartCoroutine(Server());
 		}
-		else
+
+		else if (totalAmount == 0)
         {
-			TurnCost = totalAmount;
-			InputCoinValue.text = (TurnCost).ToString();
-        }
+			Errortext.text = "Total Amount isn't enough.";
+
+		}
 
 	}
 	private IEnumerator Server()
@@ -211,19 +217,19 @@ public class UIManager : MonoBehaviour
 				_finalAngle = -(fullCircles * 360 + 30*apiform.Angle);
 				_currentLerpRotationTime = 0f;
 				yield return new WaitForSeconds(10f);
-				_isStarted = false;
 				CoinsDeltaText.text = "+" + (apiform.WinMoney).ToString();
 				CoinsDeltaText.gameObject.SetActive(true);
 				walletAmount_Text.text = (Single.Parse(walletAmount_Text.text)+apiform.WinMoney).ToString();
 				totalAmount = float.Parse(walletAmount_Text.text);
 				StartCoroutine(UpdateCoinsAmount());
-            }
+				_isStarted = false;
+			}
 		}
 	}
 	private IEnumerator UpdateCoinsAmount()
 	{
 		// Animation for increasing and decreasing of coins amount
-		const float seconds = 0.5f;
+		const float seconds = 0.1f;
 		float elapsedTime = 0;
 
 		while (elapsedTime < seconds)
