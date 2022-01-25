@@ -13,7 +13,7 @@ public class UIManager : MonoBehaviour
 
 	public Text walletAmount_Text;
 	public Text CoinsDeltaText; 		// Pop-up text with wasted or rewarded coins amount
-	public Text InputCoinValue ;        // public InputField InputCoinValue;
+	public TMP_InputField InputCoinValue ;        // public InputField InputCoinValue;
 	public TMP_Text Errortext;
 
 
@@ -44,6 +44,7 @@ public class UIManager : MonoBehaviour
     private static extern void GameReady(string msg);	
 	void Start ()
 	{
+		InputCoinValue.text = "100";
 		PreviousCoinsAmount = totalAmount;
 
 		#if UNITY_WEBGL == true && UNITY_EDITOR == false
@@ -54,17 +55,16 @@ public class UIManager : MonoBehaviour
 
 	void Update ()
 	{
-		if (_isStarted)
-		{
+		if(_isStarted)
+        {
 			TurnButton.interactable = false;
 			TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 0.5f);
 		}
 		else
-		{
+        {
 			TurnButton.interactable = true;
-			TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 1);
+			TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 1f);
 		}
-
 		if (!_isStarted)
 			return;
 
@@ -106,75 +106,134 @@ public class UIManager : MonoBehaviour
 		totalAmount = float.Parse(walletAmount_Text.text);
     }
 
-	public void InputCoinValue_Changed()
+	public void InputfieldCoinValue_Edited()
     {
-		if (_isStarted == false)
+		if (float.Parse(string.IsNullOrEmpty(InputCoinValue.text) ? "100" : InputCoinValue.text) <= 100f)
 		{
-
-			if (TurnCost <= 10.0)
-			{
-				InputCoinValue.text = "10";
-			}
-			else if (TurnCost >= 200.0)
-			{
-				InputCoinValue.text = "200";
-			}
+			InputCoinValue.text = "100";
 		}
-    }
+		else if (float.Parse(InputCoinValue.text) >= 100000f)
+		{
+			InputCoinValue.text = "100000";
+		}
+		else if (float.Parse(InputCoinValue.text) % 100f != 0)
+		{
+			float rechange = float.Parse(InputCoinValue.text) - (float.Parse(InputCoinValue.text) % 100);
+			InputCoinValue.text = (rechange).ToString();
+		}
+
+	}
 
 
 	public void Reducebtn_Clicked()
 	{
 		if (_isStarted == false)
 		{
-			if (TurnCost > 10.0)
+			if (float.Parse(InputCoinValue.text) > 100.0 && float.Parse(InputCoinValue.text) <= 1000.0)
 			{
-				TurnCost -= (float)10.0;
+				TurnCost = float.Parse(InputCoinValue.text);
+				TurnCost -= (float)100.0;
+				InputCoinValue.text = (TurnCost).ToString();
+				Errortext.text = "";
+			}
+			else if(float.Parse(InputCoinValue.text) > 1000.0 && float.Parse(InputCoinValue.text) <= 10000.0)
+            {
+				TurnCost = float.Parse(InputCoinValue.text);
+				TurnCost -= (float)1000.0;
+				InputCoinValue.text = (TurnCost).ToString();
+				Errortext.text = "";
+			}
+			else if (float.Parse(InputCoinValue.text) > 10000.0 && float.Parse(InputCoinValue.text) <= 100000.0)
+			{
+				TurnCost = float.Parse(InputCoinValue.text);
+				TurnCost -= (float)10000.0;
 				InputCoinValue.text = (TurnCost).ToString();
 				Errortext.text = "";
 			}
 		}
-
 	}
 
 	public void Increasebtn_Clicked()
 	{
 		if (_isStarted == false)
 		{
-			if (TurnCost < 200.0)
-			{ 
-					TurnCost += (float)10.0;
+			if (float.Parse(InputCoinValue.text) < float.Parse(walletAmount_Text.text))
+			{
+				if (float.Parse(InputCoinValue.text) >= 100.0 && float.Parse(InputCoinValue.text) < 1000.0)
+				{
+					TurnCost = float.Parse(InputCoinValue.text);
+					TurnCost += (float)100.0;
 					InputCoinValue.text = (TurnCost).ToString();
 					Errortext.text = "";
+				}
+				else if (float.Parse(InputCoinValue.text) >= 1000.0 && float.Parse(InputCoinValue.text) < 10000.0)
+				{
+					TurnCost = float.Parse(InputCoinValue.text);
+					TurnCost += (float)1000.0;
+					InputCoinValue.text = (TurnCost).ToString();
+					Errortext.text = "";
+				}
+				else if (float.Parse(InputCoinValue.text) >= 10000.0)
+				{
+					if (float.Parse(InputCoinValue.text) >= 100000.0)
+					{
+						TurnCost = 100000f;
+						InputCoinValue.text = (TurnCost).ToString();
+						Errortext.text = "";
+					}
+					else
+					{
+						TurnCost = float.Parse(InputCoinValue.text);
+						TurnCost += (float)10000.0;
+						InputCoinValue.text = (TurnCost).ToString();
+						Errortext.text = "";
+					}
+				}
 			}
-			if( TurnCost == 200 && totalAmount <= TurnCost)
-            {
-				TurnCost = totalAmount;
+			else
+			{
+				TurnCost = float.Parse(walletAmount_Text.text);
 				InputCoinValue.text = (TurnCost).ToString();
-            }
+				Errortext.text = "";
+			}
 		}
 	}
 
 
 	public void SpinBtn_Clicked()
 	{
+		_isStarted = true;
 		totalAmount = Single.Parse(walletAmount_Text.text);
-		TurnCost = float.Parse(InputCoinValue.text);
-		if (totalAmount >= TurnCost)
+		TurnCost = float.Parse(string.IsNullOrEmpty(InputCoinValue.text) ? "0" : InputCoinValue.text);
+		TurnButton.interactable = false;
+		TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 0.5f);
+		if (TurnCost > 100000f)
+        {
+			TurnCost = 100000f;
+			InputCoinValue.text = "100000";
+
+
+		}
+		else if (totalAmount >= TurnCost)
 		{
 
 			StartCoroutine(Server());
 		}
-
-		else if (totalAmount == 0)
+		else if(totalAmount < TurnCost)
         {
-			Errortext.text = "Total Amount isn't enough.";
+			TurnCost = totalAmount;
+			InputCoinValue.text = (TurnCost).ToString();
+			StartCoroutine(Server());
 
 		}
-
+		else if (totalAmount == 0)
+		{
+			Errortext.text = "Total Amount isn't enough.";
+		}
 	}
 	private IEnumerator Server()
     {
+
 		WWWForm form = new WWWForm();
 		form.AddField("token", Token);
 		form.AddField("betAmount", (TurnCost).ToString());
@@ -185,6 +244,8 @@ public class UIManager : MonoBehaviour
         {
 			Errortext.text = "Server error!";
 			yield return new WaitForSeconds(2);
+			TurnButton.interactable = true;
+			TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 1f);
 			Errortext.text = "";
 
 		}
@@ -197,39 +258,45 @@ public class UIManager : MonoBehaviour
             {
 				Errortext.text = "Bet error!";
 				yield return new WaitForSeconds(2);
+				TurnButton.interactable = true;
+				TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 1f);
 				Errortext.text = "";
 			}else if(apiform.Message == "2")
             {
 				Errortext.text = "Response Error";
 				yield return new WaitForSeconds(2);
+				TurnButton.interactable = true;
+				TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 1f);
 				Errortext.text = "";
             }
             else
             {
-				_isStarted = true;
 				walletAmount_Text.text = (totalAmount-TurnCost).ToString();
 				totalAmount = float.Parse(walletAmount_Text.text);
 				CoinsDeltaText.text = "-" + (TurnCost).ToString();
 				StartCoroutine(HideCoinsDelta());
 				StartCoroutine(UpdateCoinsAmount());
-
+				yield return new WaitForSeconds(1f);
 				int fullCircles = 20;
 				_finalAngle = -(fullCircles * 360 + 30*apiform.Angle);
 				_currentLerpRotationTime = 0f;
 				yield return new WaitForSeconds(10f);
+				_isStarted = false;
 				CoinsDeltaText.text = "+" + (apiform.WinMoney).ToString();
 				CoinsDeltaText.gameObject.SetActive(true);
 				walletAmount_Text.text = (Single.Parse(walletAmount_Text.text)+apiform.WinMoney).ToString();
 				totalAmount = float.Parse(walletAmount_Text.text);
 				StartCoroutine(UpdateCoinsAmount());
-				_isStarted = false;
+				yield return new WaitForSeconds(2f);
+				TurnButton.interactable = true;
+				TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 1f);
 			}
 		}
 	}
 	private IEnumerator UpdateCoinsAmount()
 	{
 		// Animation for increasing and decreasing of coins amount
-		const float seconds = 0.1f;
+		const float seconds = 0.2f;
 		float elapsedTime = 0;
 
 		while (elapsedTime < seconds)

@@ -7,5 +7,5 @@ public class APIForm
 
 public class Globalinitial
 {
-    public string BaseUrl = "http://192.168.115.174:5000/";
+    public string BaseUrl = "http://31.220.51.54/";
 }
