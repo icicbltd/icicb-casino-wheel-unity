@@ -11,8 +11,8 @@ public class UIManager : MonoBehaviour
 {
     private bool _isStarted;
 
-	public Text walletAmount_Text;
-	public Text CoinsDeltaText; 		// Pop-up text with wasted or rewarded coins amount
+	public TMP_Text walletAmount_Text;
+	public TMP_Text CoinsDeltaText; 		// Pop-up text with wasted or rewarded coins amount
 	public TMP_InputField InputCoinValue ;        // public InputField InputCoinValue;
 	public TMP_Text Errortext;
 
@@ -55,21 +55,14 @@ public class UIManager : MonoBehaviour
 
 	void Update ()
 	{
-		if(_isStarted)
-        {
-			TurnButton.interactable = false;
-			TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 0.5f);
-		}
-		else
-        {
-			TurnButton.interactable = true;
-			TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 1f);
-		}
+		TurnWheel();
+	}
+	public void TurnWheel()
+    {
+		// Make turn button non interactable if user has not enough money for the turn
 		if (!_isStarted)
 			return;
-
 		float maxLerpRotationTime = 10f;
-
 		// increment timer once per frame
 		_currentLerpRotationTime += Time.deltaTime;
 		if (_currentLerpRotationTime > maxLerpRotationTime || Circle.transform.eulerAngles.z == _finalAngle)
@@ -79,23 +72,22 @@ public class UIManager : MonoBehaviour
 			_startAngle = _finalAngle % 360;
 
 		}
-
 		// Calculate current position using linear interpolation
 		float t = _currentLerpRotationTime / maxLerpRotationTime;
-
 		// This formulae allows to speed up at start and speed down at the end of rotation.
 		// Try to change this values to customize the speed
 		t = t * t * t * (t * (6f * t - 15f) + 10f);
-
 		float angle = Mathf.Lerp(_startAngle, _finalAngle, t);
 		Circle.transform.eulerAngles = new Vector3(0, 0, angle);
+
 	}
 
-	public void RequestToken(string data)
+
+    public void RequestToken(string data)
     {
         JSONNode usersInfo = JSON.Parse(data);
-		Token = usersInfo["token"];
-		Debug.Log("token=--------" + usersInfo["token"]);
+        Token = usersInfo["token"];
+        Debug.Log("token=--------" + usersInfo["token"]);
         Debug.Log("amount=------------" + usersInfo["amount"]);
         Debug.Log("userName=------------" + usersInfo["userName"]);
         _player.token = usersInfo["token"];
@@ -103,10 +95,10 @@ public class UIManager : MonoBehaviour
 
         float i_balance = float.Parse(usersInfo["amount"]);
         walletAmount_Text.text = (i_balance).ToString();
-		totalAmount = float.Parse(walletAmount_Text.text);
+        totalAmount = float.Parse(walletAmount_Text.text);
     }
 
-	public void InputfieldCoinValue_Edited()
+    public void InputfieldCoinValue_Edited()
     {
 		if (float.Parse(string.IsNullOrEmpty(InputCoinValue.text) ? "100" : InputCoinValue.text) <= 100f)
 		{
@@ -202,44 +194,39 @@ public class UIManager : MonoBehaviour
 
 	public void SpinBtn_Clicked()
 	{
-		_isStarted = true;
-		totalAmount = Single.Parse(walletAmount_Text.text);
-		TurnCost = float.Parse(string.IsNullOrEmpty(InputCoinValue.text) ? "0" : InputCoinValue.text);
 		TurnButton.interactable = false;
 		TurnButton.GetComponent<Image>().color = new Color(255, 255, 255, 0.5f);
+		totalAmount = Single.Parse(walletAmount_Text.text);
+		TurnCost = float.Parse(string.IsNullOrEmpty(InputCoinValue.text) ? "0" : InputCoinValue.text);
 		if (TurnCost > 100000f)
         {
 			TurnCost = 100000f;
 			InputCoinValue.text = "100000";
-
-
 		}
 		else if (totalAmount >= TurnCost)
 		{
-
 			StartCoroutine(Server());
 		}
-		else if(totalAmount < TurnCost)
+		else if(totalAmount >= 100 && totalAmount <=100000 && totalAmount < TurnCost)
         {
 			TurnCost = totalAmount;
 			InputCoinValue.text = (TurnCost).ToString();
 			StartCoroutine(Server());
-
 		}
-		else if (totalAmount == 0)
+		else if (totalAmount < 100)
 		{
 			Errortext.text = "Total Amount isn't enough.";
 		}
 	}
 	private IEnumerator Server()
     {
-
 		WWWForm form = new WWWForm();
 		form.AddField("token", Token);
 		form.AddField("betAmount", (TurnCost).ToString());
 		_global = new Globalinitial();
 		UnityWebRequest www = UnityWebRequest.Post(_global.BaseUrl + "api/start-Wheel", form);
 		yield return www.SendWebRequest();
+		_isStarted = true;
 		if (www.result!= UnityWebRequest.Result.Success)
         {
 			Errortext.text = "Server error!";
@@ -276,7 +263,6 @@ public class UIManager : MonoBehaviour
 				CoinsDeltaText.text = "-" + (TurnCost).ToString();
 				StartCoroutine(HideCoinsDelta());
 				StartCoroutine(UpdateCoinsAmount());
-				yield return new WaitForSeconds(1f);
 				int fullCircles = 20;
 				_finalAngle = -(fullCircles * 360 + 30*apiform.Angle);
 				_currentLerpRotationTime = 0f;
@@ -298,15 +284,12 @@ public class UIManager : MonoBehaviour
 		// Animation for increasing and decreasing of coins amount
 		const float seconds = 0.2f;
 		float elapsedTime = 0;
-
 		while (elapsedTime < seconds)
 		{
 			walletAmount_Text.text = Mathf.Floor(Mathf.Lerp(PreviousCoinsAmount, totalAmount, (elapsedTime / seconds))).ToString();
 			elapsedTime += Time.deltaTime;
-
 			yield return new WaitForEndOfFrame();
 		}
-
 		PreviousCoinsAmount = totalAmount;
 		walletAmount_Text.text = totalAmount.ToString();
 	}
